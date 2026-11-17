@@ -4,8 +4,10 @@ const main = document.querySelector("#main");
 const search = document.querySelector("#query");
 const storageKey = "linal-solved-v1";
 const topicMap = new Map(topics.map(topic => [topic.id, topic]));
-const sections = ["theory","formulas","practice"];
-const filters = { formulas:"all", practice:"all" };
+const formulaMap = new Map(formulas.map(formula => [formula.id, formula]));
+const algorithmMap = new Map(algorithms.map(algorithm => [algorithm.id, algorithm]));
+const sections = ["theory","formulas","algorithms","practice"];
+const filters = { formulas:"all", algorithms:"all", practice:"all" };
 let practiceMode = "list";
 let randomTask = null;
 let solved = new Set();
@@ -44,11 +46,12 @@ function topicList(active) {
 
 function home() {
   return `<section class="hero">
-    <div><p class="eyebrow">Курс ВАВТ</p><h1>Линейная алгебра</h1><p class="lead">Конспекты по лекциям, формулы с примерами и задачи с пошаговыми решениями.</p></div>
+    <div><p class="eyebrow">Курс ВАВТ</p><h1>Линейная алгебра</h1><p class="lead">Конспекты лекций, формулы, алгоритмы решения и задачи для практики.</p></div>
     <div class="hero-equation"><span>Ax = λx</span><small>Собственные значения и векторы</small></div>
   </section>
   <div class="shortcuts">
     <a class="card" href="#formulas"><h3>Формулы <span class="arrow" aria-hidden="true">→</span></h3><p>Правила с примерами (${formulas.length})</p></a>
+    <a class="card" href="#algorithms"><h3>Алгоритмы <span class="arrow" aria-hidden="true">→</span></h3><p>Решения по шагам (${algorithms.length})</p></a>
     <a class="card" href="#practice"><h3>Тренажёр <span class="arrow" aria-hidden="true">→</span></h3><p>Задачи с подсказками и проверкой (${tasks.length})</p></a>
   </div>
   <section class="contents"><h2>Темы курса</h2>${topicList()}</section>`;
@@ -66,6 +69,7 @@ function formulaCard(item) {
 function topicPage(topic) {
   const index = topics.indexOf(topic);
   const topicFormulas = formulas.filter(item => item.topic === topic.id);
+  const topicAlgorithms = algorithms.filter(item => item.topic === topic.id);
   const topicTasks = tasks.filter(task => task.topic === topic.id);
   return `<div class="crumbs"><a class="text-link" href="#theory">Теория</a> / ${escapeHTML(topic.source)}</div>
     <div class="reader-layout">
@@ -74,7 +78,11 @@ function topicPage(topic) {
         <h1>${escapeHTML(topic.title)}</h1>
         <p class="lead">${escapeHTML(topic.lead)}</p>
         ${topic.sections.map(([title,body,example]) => `<section><h2>${escapeHTML(title)}</h2><div class="math-scroll">${readable(body)}</div><p class="formula math-scroll"><strong>Пример.</strong> ${readable(example)}</p></section>`).join("")}
-        <div class="task-actions"><a class="button" href="#formulas/${topic.id}">Формулы темы (${topicFormulas.length})</a><a class="button primary" href="#practice/${topic.id}">Решить задачи (${topicTasks.length})</a></div>
+        <div class="task-actions">
+          <a class="button" href="#formulas/${topic.id}">Формулы темы (${topicFormulas.length})</a>
+          <a class="button" href="#algorithms/${topic.id}">Алгоритмы темы (${topicAlgorithms.length})</a>
+          <a class="button primary" href="#practice/${topic.id}">Решить задачи (${topicTasks.length})</a>
+        </div>
         <div class="task-actions">
           ${index > 0 ? '<a class="text-link" href="#topic/' + topics[index-1].id + '">← Предыдущая тема</a>' : ""}
           ${index + 1 < topics.length ? '<a class="text-link" href="#topic/' + topics[index+1].id + '">Следующая тема →</a>' : ""}
@@ -93,6 +101,41 @@ function formulaPage() {
   const list = formulas.filter(item => filters.formulas === "all" || item.topic === filters.formulas);
   return heading("Формулы", "К каждому правилу есть пример с числами.")
     + '<div class="controls">' + filterControl("formulas") + '</div><div class="formula-grid">' + list.map(formulaCard).join("") + '</div>';
+}
+
+function algorithmsPage() {
+  const list = algorithms.filter(item => filters.algorithms === "all" || item.topic === filters.algorithms);
+  return heading("Алгоритмы", "Выбери, что нужно решить. У каждого способа есть порядок действий, пример и проверка.")
+    + '<div class="controls">' + filterControl("algorithms") + '</div>'
+    + '<div class="results-grid">' + list.map(item => `
+      <a class="card" href="#algorithm/${item.id}">
+        <p class="algorithm-topic">${escapeHTML(topicMap.get(item.topic).title)}</p>
+        <h3>${escapeHTML(item.title)} <span class="arrow" aria-hidden="true">→</span></h3>
+        <p>${escapeHTML(item.when)}</p>
+      </a>`).join("") + '</div>';
+}
+
+function algorithmPage(item) {
+  const task = tasks.find(task => task.id === item.taskId);
+  return `<div class="crumbs"><a class="text-link" href="#algorithms/${item.topic}">← Алгоритмы темы</a></div>
+    <article class="reader algorithm-reader">
+      <p class="eyebrow">${escapeHTML(topicMap.get(item.topic).title)}</p>
+      <h1>${escapeHTML(item.title)}</h1>
+      <p class="lead">${escapeHTML(item.when)}</p>
+      <div class="formula math-scroll"><strong>Пример.</strong> ${readable(item.example)}</div>
+      <ol class="algorithm-steps">${item.steps.map(([action, example]) => `
+        <li>
+          <strong>${readable(action)}</strong>
+          <div class="math-scroll">${readable(example)}</div>
+        </li>`).join("")}</ol>
+      <p class="note">${readable(item.check)}</p>
+      <h2>Формулы</h2>
+      <ul class="related-formulas">${item.formulaIds.map(id => {
+        const formula = formulaMap.get(id);
+        return `<li><a class="text-link" href="#formula/${id}">${escapeHTML(formula.title)}</a></li>`;
+      }).join("")}</ul>
+      <div class="task-actions"><a class="button primary" href="#task/${task.id}">К задаче «${escapeHTML(task.title)}»</a></div>
+    </article>`;
 }
 
 function taskCard(task) {
@@ -139,12 +182,13 @@ function searchPage(query) {
   const source = [
     ...topics.map(topic => [topic.title,topic.lead,"Теория","topic/" + topic.id,topic.sections.flat().join(" ")]),
     ...formulas.map(item => [item.title,item.formula,"Формула","formula/" + item.id,item.rule + " " + item.example]),
+    ...algorithms.map(item => [item.title,item.when,"Алгоритм","algorithm/" + item.id,[item.example,item.check,...item.steps.flat()].join(" ")]),
     ...tasks.map(task => [task.title,task.prompt,"Задача","task/" + task.id,task.source])
   ];
   const results = tokens.length ? source.filter(([title,body,kind,route,extra]) =>
     tokens.every(token => normalize(title + " " + body + " " + extra).includes(token))
   ) : [];
-  return heading("Поиск", query ? "«" + query + "» · найдено " + results.length : "Введи название темы, формулы или задачи.")
+  return heading("Поиск", query ? "«" + query + "» · найдено " + results.length : "Введи название темы, формулы, алгоритма или задачи.")
     + (results.length ? '<div class="results-grid">' + results.map(([title,body,kind,route]) =>
       `<a class="card" href="#${route}"><span class="pill">${kind}</span><h3>${escapeHTML(title)}</h3><p>${readable(body)}</p></a>`
     ).join("") + '</div>' : '<p>Попробуй «Гаусс», «ранг» или «сопряжённое».</p>');
@@ -154,7 +198,8 @@ function route() {
   const [view, ...parts] = location.hash.slice(1).split("/");
   let id = parts.join("/");
   try { id = decodeURIComponent(id); } catch {}
-  const nav = view === "topic" ? "theory" : view === "task" ? "practice" : view === "formula" ? "formulas" : view;
+  const parentSection = { topic:"theory", task:"practice", formula:"formulas", algorithm:"algorithms" };
+  const nav = parentSection[view] || view;
   for (const item of document.querySelectorAll(".top nav a")) {
     if (sections.includes(nav) && item.hash === "#" + nav) item.setAttribute("aria-current","page");
     else item.removeAttribute("aria-current");
@@ -164,6 +209,11 @@ function route() {
   else if (view === "formulas") {
     filters.formulas = topicMap.has(id) ? id : "all";
     main.innerHTML = formulaPage();
+  } else if (view === "algorithms") {
+    filters.algorithms = topicMap.has(id) ? id : "all";
+    main.innerHTML = algorithmsPage();
+  } else if (view === "algorithm" && algorithmMap.has(id)) {
+    main.innerHTML = algorithmPage(algorithmMap.get(id));
   } else if (view === "practice") {
     filters.practice = topicMap.has(id) ? id : "all";
     practiceMode = "list";
@@ -171,8 +221,8 @@ function route() {
   } else if (view === "task" && tasks.some(item => item.id === id)) {
     const task = tasks.find(item => item.id === id);
     main.innerHTML = '<div class="crumbs"><a class="text-link" href="#practice/' + task.topic + '">← Задачи темы</a></div>' + taskCard(task);
-  } else if (view === "formula" && formulas.some(item => item.id === id)) {
-    const item = formulas.find(item => item.id === id);
+  } else if (view === "formula" && formulaMap.has(id)) {
+    const item = formulaMap.get(id);
     main.innerHTML = '<div class="crumbs"><a class="text-link" href="#formulas/' + item.topic + '">← Формулы темы</a></div>' + formulaCard(item);
   } else if (view === "search") {
     search.value = id;

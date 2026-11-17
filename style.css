@@ -11,11 +11,11 @@ button,summary,select{cursor:pointer}
 .skip:focus{top:1rem}
 .wrap{width:min(1120px,calc(100% - 48px));margin-inline:auto}
 .top{background:var(--paper);border-bottom:1px solid var(--line)}
-.top-inner{min-height:76px;display:grid;grid-template-columns:auto 1fr minmax(230px,320px);gap:30px;align-items:center}
+.top-inner{min-height:76px;display:grid;grid-template-columns:auto 1fr minmax(200px,320px);gap:20px;align-items:center}
 .brand{display:flex;align-items:center;gap:10px;font-weight:750;line-height:1.18}
 .brand>span:first-child{display:grid;place-items:center;background:var(--ink);color:white;border-radius:9px;width:42px;height:42px;font:italic 30px var(--serif)}
 .brand small{display:block;letter-spacing:.09em;font-size:9px;color:var(--muted);margin-top:5px}
-nav{display:flex;gap:4px}
+nav{display:flex;flex-wrap:wrap;gap:4px}
 nav>a{border-radius:8px;padding:10px 12px;font-size:14px;font-weight:650;color:var(--muted)}
 nav>a:hover,nav>a[aria-current]{background:var(--soft);color:var(--teal)}
 #search{display:flex;min-width:0}
@@ -32,10 +32,11 @@ p{margin:0 0 12px}
 .eyebrow{font-size:12px;font-weight:750;letter-spacing:.095em;text-transform:uppercase;color:var(--teal);margin-bottom:9px}
 .lead{color:var(--muted);max-width:64ch;margin-top:13px;font-size:17px}
 .hero{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:26px;align-items:center;border-bottom:1px solid var(--line);padding:15px 0 34px}
-.hero art,.hero-equation{display:grid;place-items:center}
+.hero-equation{display:grid;place-items:center}
 .hero-equation{gap:10px;background:var(--soft);color:var(--teal);border:1px solid #cbd9cf;border-radius:14px;padding:22px 12px;font-size:27px}
 .hero-equation small{font:12px var(--sans);color:var(--muted)}
 .shortcuts,.formula-grid,.results-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-block:20px 30px}
+.shortcuts{grid-template-columns:repeat(3,minmax(0,1fr))}
 .card,.reader,.task{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}
 a.card{display:block}
 a.card:hover,.topic-row:hover{background:#f9fbf7;border-color:#a9beb0}
@@ -64,6 +65,13 @@ a.card:hover,.topic-row:hover{background:#f9fbf7;border-color:#a9beb0}
 math{font-size:1.12em}
 .formula-example{font-size:14px;color:var(--muted)}
 .note{padding:12px 14px;background:var(--peach);border-radius:8px;color:#63372d}
+.card .algorithm-topic{margin:0 0 6px;font-size:12px;font-weight:650;color:var(--teal)}
+.algorithm-reader{max-width:780px}
+.algorithm-steps{padding-inline-start:1.7rem;margin-block:22px}
+.algorithm-steps>li{padding-inline-start:.3rem;margin-block:15px}
+.algorithm-steps>li::marker{color:var(--teal);font-weight:750}
+.algorithm-steps .math-scroll{color:var(--muted)}
+.related-formulas{padding-inline-start:1.35rem}
 .controls,.task-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}
 .controls label{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .controls select{max-width:100%}
@@ -87,3 +95,4 @@ details li{margin:7px 0}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:var(--soft);color:var(--teal);font-weight:650}
 @media(max-width:850px){.top-inner{grid-template-columns:auto 1fr;gap:10px 20px;padding-block:10px}nav{justify-content:end}#search{grid-column:1/-1}.reader-layout{grid-template-columns:1fr}.side{display:none}}
 @media(max-width:600px){.wrap{width:calc(100% - 28px)}#main{padding-block:23px 35px}.hero{grid-template-columns:1fr;gap:16px;padding:4px 0 21px}.hero-equation{justify-items:start;padding:12px 15px;font-size:21px}.hero-equation small{display:none}.shortcuts,.formula-grid,.results-grid{grid-template-columns:1fr}.top-inner{grid-template-columns:1fr;gap:6px}nav{justify-content:start}nav>a{padding-inline:10px;min-height:44px}.brand{width:max-content}.footer{flex-wrap:wrap}.topic-row{gap:10px;padding:11px}.card,.task{padding:15px}}
+@media(max-width:390px){nav{gap:2px}nav>a{padding-inline:6px;font-size:13px}}
