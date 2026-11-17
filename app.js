@@ -48,8 +48,8 @@ function home() {
     <div class="hero-equation"><span>Ax = λx</span><small>Собственные значения и векторы</small></div>
   </section>
   <div class="shortcuts">
-    <a class="card" href="#formulas"><h3>Формулы <span class="arrow" aria-hidden="true">→</span></h3><p>${formulas.length} правил. У каждого есть пример.</p></a>
-    <a class="card" href="#practice"><h3>Тренажёр <span class="arrow" aria-hidden="true">→</span></h3><p>${tasks.length} задач с подсказками и проверкой ответа.</p></a>
+    <a class="card" href="#formulas"><h3>Формулы <span class="arrow" aria-hidden="true">→</span></h3><p>Правила с примерами (${formulas.length})</p></a>
+    <a class="card" href="#practice"><h3>Тренажёр <span class="arrow" aria-hidden="true">→</span></h3><p>Задачи с подсказками и проверкой (${tasks.length})</p></a>
   </div>
   <section class="contents"><h2>Темы курса</h2>${topicList()}</section>`;
 }
@@ -159,7 +159,7 @@ function route() {
     if (sections.includes(nav) && item.hash === "#" + nav) item.setAttribute("aria-current","page");
     else item.removeAttribute("aria-current");
   }
-  if (view === "theory") main.innerHTML = heading("Теория", "Семь лекций и две темы из семинаров.") + topicList();
+  if (view === "theory") main.innerHTML = heading("Теория", "Семь лекций по линейной алгебре, семинары и пределы последовательностей.") + topicList();
   else if (view === "topic" && topicMap.has(id)) main.innerHTML = topicPage(topicMap.get(id));
   else if (view === "formulas") {
     filters.formulas = topicMap.has(id) ? id : "all";
