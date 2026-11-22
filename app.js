@@ -6,6 +6,13 @@ const storageKey = "linal-solved-v1";
 const topicMap = new Map(topics.map(topic => [topic.id, topic]));
 const formulaMap = new Map(formulas.map(formula => [formula.id, formula]));
 const algorithmMap = new Map(algorithms.map(algorithm => [algorithm.id, algorithm]));
+const taskMap = new Map(tasks.map(task => [task.id, task]));
+const ticketParts = [
+  ["1. Ранг, базис и разложение", "choose-basis"],
+  ["2. Собственные значения и векторы", "eigenvectors"],
+  ["3а. Метод Лагранжа", "lagrange-squares"],
+  ["3б. Критерий Сильвестра", "apply-sylvester"]
+];
 const sections = ["theory","formulas","algorithms","practice"];
 const filters = { formulas:"all", algorithms:"all", practice:"all" };
 let practiceMode = "list";
@@ -68,6 +75,7 @@ function home() {
     <a class="card" href="#algorithms"><h3>Алгоритмы <span class="arrow" aria-hidden="true">→</span></h3><p>Решения по шагам (${algorithms.length})</p></a>
     <a class="card" href="#practice"><h3>Тренажёр <span class="arrow" aria-hidden="true">→</span></h3><p>Задачи с подсказками и проверкой (${tasks.length})</p></a>
   </div>
+  <p><a class="text-link" href="#ticket/19">Полное решение билета №19 матрицами</a></p>
   <section class="contents"><h2>Темы курса</h2>${topicList()}</section>`;
 }
 
@@ -123,11 +131,9 @@ function algorithmsPage() {
   const list = algorithms.filter(item => filters.algorithms === "all" || item.topic === filters.algorithms);
   const ticket = filters.algorithms === "all" ? `<section class="card ticket-links">
     <h2>Билет №19</h2>
+    <a class="button primary" href="#ticket/19">Открыть полное решение матрицами</a>
     <ul>
-      <li><a class="text-link" href="#algorithm/choose-basis">1. Ранг, базис и разложение</a></li>
-      <li><a class="text-link" href="#algorithm/eigenvectors">2. Собственные значения и векторы</a></li>
-      <li><a class="text-link" href="#algorithm/lagrange-squares">3а. Метод Лагранжа</a></li>
-      <li><a class="text-link" href="#algorithm/apply-sylvester">3б. Критерий Сильвестра</a></li>
+      ${ticketParts.map(([title, id]) => `<li><a class="text-link" href="#algorithm/${id}">${escapeHTML(title)}</a></li>`).join("")}
     </ul>
   </section>` : "";
   return heading("Алгоритмы", "В каждом разборе есть порядок действий, промежуточные вычисления и проверка.")
@@ -168,7 +174,7 @@ function complexPlot(points) {
 }
 
 function algorithmPage(item) {
-  const task = tasks.find(task => task.id === item.taskId);
+  const task = taskMap.get(item.taskId);
   return `<div class="crumbs"><a class="text-link" href="#algorithms/${item.topic}">← Алгоритмы темы</a></div>
     <article class="reader algorithm-reader">
       <p class="eyebrow">${escapeHTML(topicMap.get(item.topic).title)}</p>
@@ -188,12 +194,43 @@ function algorithmPage(item) {
     </article>`;
 }
 
+function ticketPage() {
+  return `<div class="crumbs"><a class="text-link" href="#algorithms">← Алгоритмы</a></div>`
+    + heading("Билет №19. Решение матрицами", "Зачёт по линейной алгебре, 2022–2023.")
+    + `<div class="task-list">${ticketParts.map(([title, id]) => {
+      const method = algorithmMap.get(id);
+      const task = taskMap.get(method.taskId);
+      return `<section class="reader solution-reader">
+        <h2>${escapeHTML(title)}</h2>
+        <div class="formula math-scroll">${readable(method.example)}</div>
+        ${workedSteps(method.steps)}
+        <p class="note"><strong>Ответ.</strong> ${readable(task.answer)}</p>
+        <a class="text-link" href="#task/${task.id}">К задаче в тренажёре</a>
+      </section>`;
+    }).join("")}</div>`;
+}
+
+function taskSolution(task, method) {
+  const steps = method ? method.steps : task.steps;
+  const explanation = Array.isArray(steps[0]) ? workedSteps(steps)
+    : `<ol class="algorithm-steps">${steps.map(step => '<li>' + workedLine(step) + '</li>').join("")}</ol>`;
+  return explanation + `<p class="math-scroll"><strong>Ответ.</strong> ${readable(task.answer)}</p>`;
+}
+
+function solutionPage(task) {
+  const method = algorithmMap.get(task.workedBy);
+  return `<div class="crumbs"><a class="text-link" href="#task/${task.id}">← Задача в тренажёре</a></div>
+    <article class="reader solution-reader">
+      <p class="eyebrow">${escapeHTML(task.source)}</p>
+      <h1>${escapeHTML(task.title)}. Решение</h1>
+      <div class="formula math-scroll">${readable(task.prompt)}</div>
+      ${taskSolution(task, method)}
+    </article>`;
+}
+
 function taskCard(task) {
   const id = escapeHTML(task.id);
   const method = algorithmMap.get(task.workedBy);
-  const solution = method ? workedSteps(method.steps)
-    : Array.isArray(task.steps[0]) ? workedSteps(task.steps)
-    : `<ol class="algorithm-steps">${task.steps.map(step => '<li>' + workedLine(step) + '</li>').join("")}</ol>`;
   const field = Array.isArray(task.check)
     ? '<select name="answer" aria-label="Ответ" required><option value="" selected disabled>Выбери ответ</option>'
       + task.check.map(choice => '<option>' + escapeHTML(choice) + '</option>').join("") + '</select>'
@@ -206,8 +243,11 @@ function taskCard(task) {
     <form data-task="${id}">${field}<button class="button primary">Проверить</button></form>
     <p class="feedback" role="status"></p>
     <details><summary>Подсказка</summary><p class="math-scroll">${readable(task.hint)}</p></details>
-    <details><summary>Решение по шагам</summary>${solution}<p class="math-scroll"><strong>Ответ.</strong> ${readable(task.answer)}</p></details>
-    ${method ? `<a class="text-link" href="#algorithm/${method.id}">Алгоритм и формулы</a>` : ""}
+    <details><summary>Решение по шагам</summary>${taskSolution(task, method)}</details>
+    <div class="task-actions">
+      <a class="text-link" href="#solution/${id}">Открыть решение целиком</a>
+      ${method ? `<a class="text-link" href="#algorithm/${method.id}">Алгоритм и формулы</a>` : ""}
+    </div>
   </article>`;
 }
 
@@ -253,7 +293,7 @@ function route() {
   const [view, ...parts] = location.hash.slice(1).split("/");
   let id = parts.join("/");
   try { id = decodeURIComponent(id); } catch {}
-  const parentSection = { topic:"theory", task:"practice", formula:"formulas", algorithm:"algorithms" };
+  const parentSection = { topic:"theory", task:"practice", solution:"practice", formula:"formulas", algorithm:"algorithms", ticket:"algorithms" };
   const nav = parentSection[view] || view;
   for (const item of document.querySelectorAll(".top nav a")) {
     if (sections.includes(nav) && item.hash === "#" + nav) item.setAttribute("aria-current","page");
@@ -269,12 +309,16 @@ function route() {
     main.innerHTML = algorithmsPage();
   } else if (view === "algorithm" && algorithmMap.has(id)) {
     main.innerHTML = algorithmPage(algorithmMap.get(id));
+  } else if (view === "ticket" && id === "19") {
+    main.innerHTML = ticketPage();
   } else if (view === "practice") {
     filters.practice = topicMap.has(id) ? id : "all";
     practiceMode = "list";
     main.innerHTML = practicePage();
-  } else if (view === "task" && tasks.some(item => item.id === id)) {
-    const task = tasks.find(item => item.id === id);
+  } else if (view === "solution" && taskMap.has(id)) {
+    main.innerHTML = solutionPage(taskMap.get(id));
+  } else if (view === "task" && taskMap.has(id)) {
+    const task = taskMap.get(id);
     main.innerHTML = '<div class="crumbs"><a class="text-link" href="#practice/' + task.topic + '">← Задачи темы</a></div>' + taskCard(task);
   } else if (view === "formula" && formulaMap.has(id)) {
     const item = formulaMap.get(id);
