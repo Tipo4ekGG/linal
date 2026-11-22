@@ -71,6 +71,10 @@ math{font-size:1.12em}
 .algorithm-steps>li{padding-inline-start:.3rem;margin-block:15px}
 .algorithm-steps>li::marker{color:var(--teal);font-weight:750}
 .algorithm-steps .math-scroll{color:var(--muted);margin:2px 0}
+.algorithm-steps .matrix-line{color:var(--ink);background:#edf2ec;border-radius:7px;padding:8px 12px;margin:7px 0;white-space:nowrap}
+.augmented-matrix{border-spacing:0}
+.augmented-matrix mtd{padding:.12em .38em}
+.augmented-matrix .matrix-divider{border-inline-start:1px solid currentColor}
 .ticket-links{margin-block:16px}
 .ticket-links h2{font-size:1.45rem}
 .ticket-links ul{display:flex;flex-wrap:wrap;gap:6px 22px;list-style:none;padding:0;margin:8px 0 0}

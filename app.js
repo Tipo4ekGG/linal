@@ -23,12 +23,26 @@ function escapeHTML(value) {
 }
 
 function readable(value) {
-  return escapeHTML(value).replace(/\[\[[^\[\]]+\](?:,\[[^\[\]]+\])*\]/g, matrix => {
-    const rows = Array.from(matrix.matchAll(/\[([^\[\]]+)\]/g), match =>
-      '<mtr>' + match[1].split(",").map(cell => '<mtd><mtext>' + cell + '</mtext></mtd>').join("") + '</mtr>');
-    return '<math><mrow><mo>(</mo><mtable rowspacing=".15em" columnspacing=".6em">'
-      + rows.join("") + '</mtable><mo>)</mo></mrow></math>';
+  return escapeHTML(value).replace(/\|?\[\[[^\[\]]+\](?:,\[[^\[\]]+\])*\]\|?/g, matrix => {
+    const determinant = matrix.startsWith("|") && matrix.endsWith("|");
+    const rows = Array.from(matrix.matchAll(/\[([^\[\]]+)\]/g), ([, row]) => {
+      const [left, right] = row.split("|");
+      const leftCells = left.split(",").map(cell => matrixCell(cell));
+      const rightCells = right?.split(",").map((cell, index) => matrixCell(cell, index === 0)) ?? [];
+      return '<mtr>' + [...leftCells, ...rightCells].join("") + '</mtr>';
+    });
+    const [open, close] = determinant ? ["|", "|"] : ["(", ")"];
+    const tableClass = matrix.slice(1, -1).includes("|") ? ' class="augmented-matrix"' : "";
+    return '<math><mrow><mo>' + open + '</mo><mtable' + tableClass + ' columnspacing=".6em">'
+      + rows.join("") + '</mtable><mo>' + close + '</mo></mrow></math>';
   });
+}
+
+function matrixCell(cell, separated = false) {
+  const fraction = cell.trim().match(/^([−-]?\d+)\/(\d+)$/);
+  const value = fraction ? '<mfrac><mn>' + fraction[1] + '</mn><mn>' + fraction[2] + '</mn></mfrac>'
+    : '<mtext>' + cell + '</mtext>';
+  return '<mtd' + (separated ? ' class="matrix-divider"' : '') + '>' + value + '</mtd>';
 }
 
 function heading(title, body = "") {
@@ -127,11 +141,17 @@ function algorithmsPage() {
       </a>`).join("") + '</div>';
 }
 
+function workedLine(line) {
+  const matrixCalculation = line.includes("[[") && !/[а-яё]/iu.test(line);
+  const className = matrixCalculation ? "math-scroll matrix-line" : "math-scroll";
+  return '<p class="' + className + '">' + readable(line) + '</p>';
+}
+
 function workedSteps(steps) {
   return `<ol class="algorithm-steps">${steps.map(([action, ...lines]) => `
     <li>
       <strong>${readable(action)}</strong>
-      ${lines.map(line => `<p class="math-scroll">${readable(line)}</p>`).join("")}
+      ${lines.map(workedLine).join("")}
     </li>`).join("")}</ol>`;
 }
 
@@ -172,7 +192,8 @@ function taskCard(task) {
   const id = escapeHTML(task.id);
   const method = algorithmMap.get(task.workedBy);
   const solution = method ? workedSteps(method.steps)
-    : `<ol>${task.steps.map(step => `<li class="math-scroll">${readable(step)}</li>`).join("")}</ol>`;
+    : Array.isArray(task.steps[0]) ? workedSteps(task.steps)
+    : `<ol class="algorithm-steps">${task.steps.map(step => '<li>' + workedLine(step) + '</li>').join("")}</ol>`;
   const field = Array.isArray(task.check)
     ? '<select name="answer" aria-label="Ответ" required><option value="" selected disabled>Выбери ответ</option>'
       + task.check.map(choice => '<option>' + escapeHTML(choice) + '</option>').join("") + '</select>'
