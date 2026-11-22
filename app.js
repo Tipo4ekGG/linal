@@ -58,11 +58,13 @@ function home() {
 }
 
 function formulaCard(item) {
+  const method = algorithms.find(algorithm => algorithm.topic === item.topic && algorithm.formulaIds.includes(item.id));
   return `<article class="card" id="formula-${item.id}">
     <h3>${escapeHTML(item.title)}</h3>
     <div class="formula math-scroll">${readable(item.formula)}</div>
     <p>${readable(item.rule)}</p>
     <p class="formula-example"><strong>Пример.</strong> ${readable(item.example)}</p>
+    ${method ? `<p><a class="text-link" href="#algorithm/${method.id}">Посмотреть решение по шагам</a></p>` : ""}
   </article>`;
 }
 
@@ -105,7 +107,17 @@ function formulaPage() {
 
 function algorithmsPage() {
   const list = algorithms.filter(item => filters.algorithms === "all" || item.topic === filters.algorithms);
-  return heading("Алгоритмы", "Выбери, что нужно решить. У каждого способа есть порядок действий, пример и проверка.")
+  const ticket = filters.algorithms === "all" ? `<section class="card ticket-links">
+    <h2>Билет №19</h2>
+    <ul>
+      <li><a class="text-link" href="#algorithm/choose-basis">1. Ранг, базис и разложение</a></li>
+      <li><a class="text-link" href="#algorithm/eigenvectors">2. Собственные значения и векторы</a></li>
+      <li><a class="text-link" href="#algorithm/lagrange-squares">3а. Метод Лагранжа</a></li>
+      <li><a class="text-link" href="#algorithm/apply-sylvester">3б. Критерий Сильвестра</a></li>
+    </ul>
+  </section>` : "";
+  return heading("Алгоритмы", "В каждом разборе есть порядок действий, промежуточные вычисления и проверка.")
+    + ticket
     + '<div class="controls">' + filterControl("algorithms") + '</div>'
     + '<div class="results-grid">' + list.map(item => `
       <a class="card" href="#algorithm/${item.id}">
@@ -113,6 +125,26 @@ function algorithmsPage() {
         <h3>${escapeHTML(item.title)} <span class="arrow" aria-hidden="true">→</span></h3>
         <p>${escapeHTML(item.when)}</p>
       </a>`).join("") + '</div>';
+}
+
+function workedSteps(steps) {
+  return `<ol class="algorithm-steps">${steps.map(([action, ...lines]) => `
+    <li>
+      <strong>${readable(action)}</strong>
+      ${lines.map(line => `<p class="math-scroll">${readable(line)}</p>`).join("")}
+    </li>`).join("")}</ol>`;
+}
+
+function complexPlot(points) {
+  return `<figure class="complex-figure">
+    <div class="complex-plot" aria-hidden="true">
+      <span class="axis-label real-axis">Re</span><span class="axis-label imaginary-axis">Im</span>
+      <span class="unit-circle"></span><span class="axis-label origin">0</span>
+      ${points.map(([label, x, y]) => `<span class="complex-point" style="left:${50+32*x}%;top:${50-32*y}%"><span>${escapeHTML(label)}</span></span>`).join("")}
+    </div>
+    <figcaption>Координаты на комплексной плоскости: ${points.map(([label, , , coordinates]) =>
+      `${escapeHTML(label)} ${escapeHTML(coordinates)}`).join(", ")}.</figcaption>
+  </figure>`;
 }
 
 function algorithmPage(item) {
@@ -123,11 +155,9 @@ function algorithmPage(item) {
       <h1>${escapeHTML(item.title)}</h1>
       <p class="lead">${escapeHTML(item.when)}</p>
       <div class="formula math-scroll"><strong>Пример.</strong> ${readable(item.example)}</div>
-      <ol class="algorithm-steps">${item.steps.map(([action, example]) => `
-        <li>
-          <strong>${readable(action)}</strong>
-          <div class="math-scroll">${readable(example)}</div>
-        </li>`).join("")}</ol>
+      ${item.source ? `<p class="task-meta">${escapeHTML(item.source)}</p>` : ""}
+      ${workedSteps(item.steps)}
+      ${item.points ? complexPlot(item.points) : ""}
       <p class="note">${readable(item.check)}</p>
       <h2>Формулы</h2>
       <ul class="related-formulas">${item.formulaIds.map(id => {
@@ -140,6 +170,9 @@ function algorithmPage(item) {
 
 function taskCard(task) {
   const id = escapeHTML(task.id);
+  const method = algorithmMap.get(task.workedBy);
+  const solution = method ? workedSteps(method.steps)
+    : `<ol>${task.steps.map(step => `<li class="math-scroll">${readable(step)}</li>`).join("")}</ol>`;
   const field = Array.isArray(task.check)
     ? '<select name="answer" aria-label="Ответ" required><option value="" selected disabled>Выбери ответ</option>'
       + task.check.map(choice => '<option>' + escapeHTML(choice) + '</option>').join("") + '</select>'
@@ -152,7 +185,8 @@ function taskCard(task) {
     <form data-task="${id}">${field}<button class="button primary">Проверить</button></form>
     <p class="feedback" role="status"></p>
     <details><summary>Подсказка</summary><p class="math-scroll">${readable(task.hint)}</p></details>
-    <details><summary>Решение по шагам</summary><ol>${task.steps.map(step => '<li class="math-scroll">' + readable(step) + '</li>').join("")}</ol><p class="math-scroll"><strong>Ответ.</strong> ${readable(task.answer)}</p></details>
+    <details><summary>Решение по шагам</summary>${solution}<p class="math-scroll"><strong>Ответ.</strong> ${readable(task.answer)}</p></details>
+    ${method ? `<a class="text-link" href="#algorithm/${method.id}">Алгоритм и формулы</a>` : ""}
   </article>`;
 }
 
@@ -182,7 +216,7 @@ function searchPage(query) {
   const source = [
     ...topics.map(topic => [topic.title,topic.lead,"Теория","topic/" + topic.id,topic.sections.flat().join(" ")]),
     ...formulas.map(item => [item.title,item.formula,"Формула","formula/" + item.id,item.rule + " " + item.example]),
-    ...algorithms.map(item => [item.title,item.when,"Алгоритм","algorithm/" + item.id,[item.example,item.check,...item.steps.flat()].join(" ")]),
+    ...algorithms.map(item => [item.title,item.when,"Алгоритм","algorithm/" + item.id,[item.source,item.example,item.check,...item.steps.flat()].join(" ")]),
     ...tasks.map(task => [task.title,task.prompt,"Задача","task/" + task.id,task.source])
   ];
   const results = tokens.length ? source.filter(([title,body,kind,route,extra]) =>
