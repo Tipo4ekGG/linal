@@ -102,6 +102,11 @@ math{font-size:1.12em}
 .button.primary{border-color:var(--teal);background:var(--teal);color:white}
 .button.primary:hover{background:#104b44}
 .task-list{display:grid;gap:12px}
+.control-numbers{justify-content:start;margin-bottom:12px}
+.control-part+.control-part{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+.control-part h3{font-size:1.1rem;margin:0 0 8px}
+.control-part>p{margin:6px 0}
+.control-task [aria-pressed="true"]{background:#ddece3;color:#19513e;border-color:#45806d}
 .task h2{font-size:1.45rem;margin:6px 0 9px}
 .task form{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .task input,.task select{min-width:min(220px,100%);max-width:100%}

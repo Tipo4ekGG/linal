@@ -3,6 +3,7 @@
 const main = document.querySelector("#main");
 const search = document.querySelector("#query");
 const storageKey = "linal-solved-v1";
+const controlStorageKey = "linal-control-solved-v1";
 const topicMap = new Map(topics.map(topic => [topic.id, topic]));
 const formulaMap = new Map(formulas.map(formula => [formula.id, formula]));
 const algorithmMap = new Map(algorithms.map(algorithm => [algorithm.id, algorithm]));
@@ -18,10 +19,16 @@ const filters = { formulas:"all", algorithms:"all", practice:"all" };
 let practiceMode = "list";
 let randomTask = null;
 let solved = new Set();
+let controlSolved = new Set();
 
 try {
   const ids = JSON.parse(localStorage.getItem(storageKey) || "[]");
   if (Array.isArray(ids)) solved = new Set(ids.filter(id => tasks.some(task => task.id === id)));
+} catch {}
+
+try {
+  const ids = JSON.parse(localStorage.getItem(controlStorageKey) || "[]");
+  if (Array.isArray(ids)) controlSolved = new Set(ids);
 } catch {}
 
 function escapeHTML(value) {
@@ -75,7 +82,10 @@ function home() {
     <a class="card" href="#algorithms"><h3>Алгоритмы <span class="arrow" aria-hidden="true">→</span></h3><p>Решения по шагам (${algorithms.length})</p></a>
     <a class="card" href="#practice"><h3>Тренажёр <span class="arrow" aria-hidden="true">→</span></h3><p>Задачи с подсказками и проверкой (${tasks.length})</p></a>
   </div>
-  <p><a class="text-link" href="#ticket/19">Полное решение билета №19 матрицами</a></p>
+  <div class="task-actions">
+    <a class="button primary" href="#control">Подготовка к контрольной</a>
+    <a class="text-link" href="#ticket/19">Полное решение билета №19 матрицами</a>
+  </div>
   <section class="contents"><h2>Темы курса</h2>${topicList()}</section>`;
 }
 
@@ -95,6 +105,9 @@ function topicPage(topic) {
   const topicFormulas = formulas.filter(item => item.topic === topic.id);
   const topicAlgorithms = algorithms.filter(item => item.topic === topic.id);
   const topicTasks = tasks.filter(task => task.topic === topic.id);
+  const controlLinks = controlVariants.flatMap(group => group.tasks
+    .filter(task => task.topics.includes(topic.id))
+    .map(task => `<li><a class="text-link" href="#control/${group.id}/${task.number}">${escapeHTML(group.title)} · №${task.number}. ${escapeHTML(task.title)}</a></li>`));
   return `<div class="crumbs"><a class="text-link" href="#theory">Теория</a> / ${escapeHTML(topic.source)}</div>
     <div class="reader-layout">
       <article class="reader">
@@ -103,10 +116,11 @@ function topicPage(topic) {
         <p class="lead">${escapeHTML(topic.lead)}</p>
         ${topic.sections.map(([title,body,example]) => `<section><h2>${escapeHTML(title)}</h2><div class="math-scroll">${readable(body)}</div><p class="formula math-scroll"><strong>Пример.</strong> ${readable(example)}</p></section>`).join("")}
         <div class="task-actions">
-          <a class="button" href="#formulas/${topic.id}">Формулы темы (${topicFormulas.length})</a>
-          <a class="button" href="#algorithms/${topic.id}">Алгоритмы темы (${topicAlgorithms.length})</a>
-          <a class="button primary" href="#practice/${topic.id}">Решить задачи (${topicTasks.length})</a>
+          ${topicFormulas.length ? `<a class="button" href="#formulas/${topic.id}">Формулы темы (${topicFormulas.length})</a>` : ""}
+          ${topicAlgorithms.length ? `<a class="button" href="#algorithms/${topic.id}">Алгоритмы темы (${topicAlgorithms.length})</a>` : ""}
+          ${topicTasks.length ? `<a class="button primary" href="#practice/${topic.id}">Решить задачи (${topicTasks.length})</a>` : ""}
         </div>
+        ${controlLinks.length ? `<section><h2>Задачи с контрольной и дополнительных листов</h2><ul>${controlLinks.join("")}</ul></section>` : ""}
         <div class="task-actions">
           ${index > 0 ? '<a class="text-link" href="#topic/' + topics[index-1].id + '">← Предыдущая тема</a>' : ""}
           ${index + 1 < topics.length ? '<a class="text-link" href="#topic/' + topics[index+1].id + '">Следующая тема →</a>' : ""}
@@ -161,14 +175,14 @@ function workedSteps(steps) {
     </li>`).join("")}</ol>`;
 }
 
-function complexPlot(points) {
+function complexPlot(points, caption = "Координаты на комплексной плоскости:") {
   return `<figure class="complex-figure">
     <div class="complex-plot" aria-hidden="true">
       <span class="axis-label real-axis">Re</span><span class="axis-label imaginary-axis">Im</span>
       <span class="unit-circle"></span><span class="axis-label origin">0</span>
       ${points.map(([label, x, y]) => `<span class="complex-point" style="left:${50+32*x}%;top:${50-32*y}%"><span>${escapeHTML(label)}</span></span>`).join("")}
     </div>
-    <figcaption>Координаты на комплексной плоскости: ${points.map(([label, , , coordinates]) =>
+    <figcaption>${escapeHTML(caption)} ${points.map(([label, , , coordinates]) =>
       `${escapeHTML(label)} ${escapeHTML(coordinates)}`).join(", ")}.</figcaption>
   </figure>`;
 }
@@ -263,9 +277,57 @@ function practicePage() {
     + `<div class="controls">${filterControl("practice")}
       <button class="button" id="mix">${practiceMode === "random" ? "Следующая случайная" : "Случайная задача"}</button>
       ${practiceMode === "random" ? '<button class="button" id="all-tasks">К списку задач</button>' : ""}
+      <a class="button primary" href="#control">Контрольная</a>
     </div>
     <p class="muted" id="progress" role="status">Решено ${completed} из ${list.length}</p>
     <div class="task-list">${(practiceMode === "random" && card ? [card] : list).map(taskCard).join("")}</div>`;
+}
+
+function controlCard(group, task) {
+  const key = group.id + "/" + task.number;
+  const completed = controlSolved.has(key);
+  return `<article class="task control-task">
+    <h2>№${task.number}. ${escapeHTML(task.title)}</h2>
+    ${task.parts.map(part => `
+      <section class="control-part">
+        ${part.title ? `<h3>${escapeHTML(part.title)}</h3>` : ""}
+        ${part.prompt.map(workedLine).join("")}
+        <details>
+          <summary>${part.title ? "Разбор · " + escapeHTML(part.title) : "Показать решение по шагам"}</summary>
+          ${workedSteps(part.steps)}
+          ${part.points ? complexPlot(part.points, "Полярные координаты (модуль; угол):") : ""}
+        </details>
+      </section>`).join("")}
+    <div class="task-actions">
+      ${task.topics.map(id => `<a class="text-link" href="#topic/${id}">${escapeHTML(topicMap.get(id).title)}</a>`).join("")}
+      <button class="button" data-control-mark="${key}" aria-pressed="${completed}">Решено</button>
+    </div>
+  </article>`;
+}
+
+function controlProgress(group) {
+  const total = group.tasks.filter(task => controlSolved.has(group.id + "/" + task.number)).length;
+  return "Решено " + total + " из " + group.tasks.length;
+}
+
+function controlPage(group, number) {
+  const back = '<div class="crumbs"><a class="text-link" href="#practice">Тренажёр</a>'
+    + (group ? ' / <a class="text-link" href="#control">Контрольная</a>' : "") + '</div>';
+  if (!group) {
+    return back + heading("Контрольная", "Варианты А и Б с первого листа и задания для практики с остальных листов.")
+      + '<div class="results-grid">' + controlVariants.map(item => `
+        <a class="card" href="#control/${item.id}">
+          <h3>${escapeHTML(item.title)} <span class="arrow" aria-hidden="true">→</span></h3>
+          <p>${controlProgress(item)}</p>
+        </a>`).join("") + '</div>';
+  }
+  const selected = group.tasks.find(task => task.number === number);
+  return back + heading(group.title, "Реши задачу на бумаге, затем сверь ход решения и отметь её как решённую.")
+    + (selected ? `<p><a class="text-link" href="#control/${group.id}">← Все задания этого листа</a></p>`
+      : `<nav class="control-numbers" aria-label="Номера задач">${group.tasks.map(task =>
+        `<a class="button" href="#control/${group.id}/${task.number}">№${task.number}</a>`).join("")}</nav>`)
+    + `<p class="muted" id="control-progress" data-group="${group.id}" role="status">${controlProgress(group)}</p>
+      <div class="task-list">${(selected ? [selected] : group.tasks).map(task => controlCard(group, task)).join("")}</div>`;
 }
 
 function normalize(value) {
@@ -278,7 +340,11 @@ function searchPage(query) {
     ...topics.map(topic => [topic.title,topic.lead,"Теория","topic/" + topic.id,topic.sections.flat().join(" ")]),
     ...formulas.map(item => [item.title,item.formula,"Формула","formula/" + item.id,item.rule + " " + item.example]),
     ...algorithms.map(item => [item.title,item.when,"Алгоритм","algorithm/" + item.id,[item.source,item.example,item.check,...item.steps.flat()].join(" ")]),
-    ...tasks.map(task => [task.title,task.prompt,"Задача","task/" + task.id,task.source])
+    ...tasks.map(task => [task.title,task.prompt,"Задача","task/" + task.id,task.source]),
+    ...controlVariants.flatMap(group => group.tasks.map(task => [
+      task.title, group.title + " · №" + task.number, "Контрольная",
+      "control/" + group.id + "/" + task.number, task.parts.flatMap(part => part.prompt).join(" ")
+    ]))
   ];
   const results = tokens.length ? source.filter(([title,body,kind,route,extra]) =>
     tokens.every(token => normalize(title + " " + body + " " + extra).includes(token))
@@ -293,7 +359,7 @@ function route() {
   const [view, ...parts] = location.hash.slice(1).split("/");
   let id = parts.join("/");
   try { id = decodeURIComponent(id); } catch {}
-  const parentSection = { topic:"theory", task:"practice", solution:"practice", formula:"formulas", algorithm:"algorithms", ticket:"algorithms" };
+  const parentSection = { topic:"theory", task:"practice", solution:"practice", formula:"formulas", algorithm:"algorithms", ticket:"algorithms", control:"practice" };
   const nav = parentSection[view] || view;
   for (const item of document.querySelectorAll(".top nav a")) {
     if (sections.includes(nav) && item.hash === "#" + nav) item.setAttribute("aria-current","page");
@@ -311,6 +377,9 @@ function route() {
     main.innerHTML = algorithmPage(algorithmMap.get(id));
   } else if (view === "ticket" && id === "19") {
     main.innerHTML = ticketPage();
+  } else if (view === "control") {
+    const [group, number] = id.split("/");
+    main.innerHTML = controlPage(controlVariants.find(item => item.id === group), number);
   } else if (view === "practice") {
     filters.practice = topicMap.has(id) ? id : "all";
     practiceMode = "list";
@@ -349,7 +418,17 @@ main.addEventListener("change", event => {
 });
 
 main.addEventListener("click", event => {
-  if (event.target.id === "mix") {
+  const mark = event.target.closest("[data-control-mark]");
+  if (mark) {
+    const key = mark.dataset.controlMark;
+    const completed = !controlSolved.has(key);
+    if (completed) controlSolved.add(key);
+    else controlSolved.delete(key);
+    try { localStorage.setItem(controlStorageKey, JSON.stringify([...controlSolved])); } catch {}
+    mark.setAttribute("aria-pressed", String(completed));
+    const progress = document.querySelector("#control-progress");
+    progress.textContent = controlProgress(controlVariants.find(group => group.id === progress.dataset.group));
+  } else if (event.target.id === "mix") {
     const list = filteredTasks();
     const remaining = list.filter(task => !solved.has(task.id) && task.id !== randomTask);
     const alternatives = list.filter(task => task.id !== randomTask);
